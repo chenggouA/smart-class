@@ -6,11 +6,11 @@ from datetime import datetime
 Base = declarative_base()
 
 
-# host = '175.24.164.112'
-# username = 'Chenggou'
+host = '175.24.164.112'
+username = 'Chenggou'
 
-host = 'localhost'
-username = 'root'
+# host = 'localhost'
+# username = 'root'
 password = '123456'
 dbname = 'haut'
 
@@ -48,8 +48,9 @@ class HautSignRecord(Base):
 
     recordId = Column(Integer, primary_key=True, autoincrement=True)
     signId = Column(Integer, ForeignKey("haut_sign.signID"))
-    studentId =Column(Integer, ForeignKey("haut_student.student_id"))
+    studentId = Column(Integer, ForeignKey("haut_student.student_id"))
     signTime = Column(DateTime)
+    signImg = Column(String(200))
 
 
 
@@ -160,9 +161,13 @@ def create_all_table():
     # 学生数据
     # 插入行为数据
     # INSERT INTO `haut_student` VALUES (1,),(2,);
-    students = [HautStudent(class_= '6班', grade = 3, name = '纯爱战士', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
-                HautStudent(class_= '3班', grade = 2 , name = '阿米诺斯', photo_url = 'https://files.catbox.moe/9zhzt6.jfif')
+    students = [HautStudent(class_= '6班', grade = 3, name = '徐天赐', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
+                HautStudent(class_= '3班', grade = 2 , name = '翁创创', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
+                HautStudent(class_= '3班', grade = 2 , name = '周研博', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
+                HautStudent(class_= '3班', grade = 2 , name = '张森林', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
+                HautStudent(class_= '3班', grade = 2 , name = '田承玉', photo_url = 'https://files.catbox.moe/9zhzt6.jfif'),
                 ]
+    
     
 
     # 老师信息数据
@@ -185,6 +190,9 @@ def create_all_table():
     # 学生选课
     studentCourses = [HautStudentCourses(StudentID = 1, CourseID = 1, EnrollmentDate = datetime.now()),
         HautStudentCourses(StudentID = 1, CourseID = 2, EnrollmentDate = datetime.now()),
+        HautStudentCourses(StudentID = 3, CourseID = 2, EnrollmentDate = datetime.now()),
+        HautStudentCourses(StudentID = 4, CourseID = 2, EnrollmentDate = datetime.now()),
+        HautStudentCourses(StudentID = 5, CourseID = 2, EnrollmentDate = datetime.now()),
         HautStudentCourses(StudentID = 2, CourseID = 1, EnrollmentDate = datetime.now()),
         HautStudentCourses(StudentID = 2, CourseID = 2, EnrollmentDate = datetime.now())]
     

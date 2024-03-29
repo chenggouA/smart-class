@@ -1,12 +1,12 @@
 from flask import Flask, render_template, Response
 from Camera.Stream import CameraStream
 from flask_executor import Executor
-from ai.model import YOLOV8
 from Camera.HKcam import HKCam
-from config import *
+from configs.config import *
 from flask_cors import CORS
-from utils import *
-from Observers import ImageWriter, DataBaseWriter
+from utils.utils import *
+from create import create_action_detection_model, create_FaceRecognition, get_minio_client
+
 import cv2
 
 
@@ -24,11 +24,8 @@ import cv2
 # 使用 HKCam
 
 # 使用本机的Cam
-cap = cv2.VideoCapture("1.mp4")
+cap = cv2.VideoCapture("./qiandao.mp4")
 # 使用本机的Cam
-
-yolo = YOLOV8("./ai/onnx/smart_model.onnx")
-yolo.register_observer(ImageWriter(), DataBaseWriter())
 
 
 # === 全局变量 ===
@@ -36,12 +33,17 @@ yolo.register_observer(ImageWriter(), DataBaseWriter())
 app = Flask(__name__)
 executor = Executor(app)
 CORS(app, origins=" http://localhost:5173/")
+yolo = create_action_detection_model()
+retinaface = create_FaceRecognition()
+# minio client
+minioClient = get_minio_client()
 
 camera_stream = CameraStream()
 
         
 
 def read_camera(cap):
+    global yolo, retinaface
     # 创建一个循环，用于不断地读取摄像头的图像并调用 camera_stream.update_frame
     try:
         print("摄像头开启")
@@ -49,13 +51,14 @@ def read_camera(cap):
         while True:
             _, img = cap.read()
 
-            if i % 80 == 0:
-                img = yolo.inference(img)
-            
+            img = yolo.inference(img)
+            img = retinaface.inference(img)
             
             _, bytes_arr = cv2.imencode('.jpg', img)
 
             camera_stream.update_frame(bytes_arr.tobytes())
+    except Exception as e :
+        print(e)
     finally:
         print("摄像头关闭")
         cap.release()
@@ -79,7 +82,8 @@ def video_feed():
             yield (b'--frame\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     return Response(generate(), mimetype='multipart/x-mixed-replace;boundary=frame')
-    
+
+
 
 with app.test_request_context():
     executor.submit(read_camera, cap)

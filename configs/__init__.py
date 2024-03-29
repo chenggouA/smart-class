@@ -1,0 +1,1 @@
+from .minio_config import defaults as minio_cfg
