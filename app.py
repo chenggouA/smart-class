@@ -24,7 +24,7 @@ import cv2
 # 使用 HKCam
 
 # 使用本机的Cam
-cap = cv2.VideoCapture("./qiandao.mp4")
+cap = cv2.VideoCapture(0)
 # 使用本机的Cam
 
 
@@ -52,7 +52,7 @@ def read_camera(cap):
             _, img = cap.read()
 
             img = yolo.inference(img)
-            img = retinaface.inference(img)
+            # img = retinaface.inference(img)
             
             _, bytes_arr = cv2.imencode('.jpg', img)
 

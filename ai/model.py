@@ -3,9 +3,11 @@ from ultralytics.yolo.data.dataloaders.stream_loaders import LoadPilAndNumpy
 import onnx
 import torch
 import numpy as np
+from utils import draw_bbox_with_text
 import onnxruntime
 from ultralytics.yolo.engine.predictor import BasePredictor
 from Observers import Observable, ObserverData
+from configs.config import *
 
 
 class DetectionPredictor(BasePredictor):
@@ -66,12 +68,23 @@ class YOLOV8(Observable):
         preds = self.session.run(self.output_names, {self.input_name: img})
         preds = self.detector.postprocess(torch.from_numpy(preds[0]), img, [origin_img])
 
-        if len(preds) != 0:
-            bbox_xyxy = preds[0][:, :4].numpy()
-            bbox_xywh = self._xyxy2xywh(bbox_xyxy)
-            cls_conf = preds[0][:, 4].numpy()
-            cls_ids = preds[0][:, 5].numpy()
-            self.notify_observers(ObserverData(None, ((bbox_xywh, cls_conf, cls_ids), origin_img)))
+        for item in preds[0].numpy():
+            bbox = (int(item[0]), int(item[1]), int(item[2]), int(item[3]))
+            text = '{} {}'.format(english_label_class_map.get(item[5]), str(item[4]))
+            obstacle_name = chinese_label_class_map.get(item[5])
+           
+            
+            draw_bbox_with_text(origin_img, bbox, text, font_scale, text_color, class_color.get(item[5]), thickness)
+        
+        
+        # if len(preds) != 0:
+        #     bbox_xyxy = preds[0][:, :4].numpy()
+        #     bbox_xywh = self._xyxy2xywh(bbox_xyxy)
+        #     cls_conf = preds[0][:, 4].numpy()
+        #     cls_ids = preds[0][:, 5].numpy()
+
+        #     draw_boxes(origin_img, bbox_xyxy, cls_ids)
+        #     # self.notify_observers(ObserverData(None, ((bbox_xywh, cls_conf, cls_ids), origin_img)))
         return origin_img
     
     def _xyxy2xywh(self, xyxy):
