@@ -1,5 +1,4 @@
 import time
-
 import cv2
 import numpy as np
 import torch
@@ -7,15 +6,16 @@ import torch.nn as nn
 
 from tqdm import tqdm
 from PIL import Image
-from face.nets_facenet.facenet import Facenet
-from face.nets_retinaface.retinaface import RetinaFace
-from face.utils.anchors import Anchors
-from face.utils.config import cfg_mnet, cfg_re50
-from face.utils.utils import (Alignment_1, compare_faces, letterbox_image,
+from .nets_facenet.facenet import Facenet
+from .nets_retinaface.retinaface import RetinaFace
+from .utils.anchors import Anchors
+from .utils.config import cfg_mnet, cfg_re50
+from .utils.utils import (Alignment_1, compare_faces, letterbox_image,
                          preprocess_input)
-from face.utils.utils_bbox import (decode, decode_landm, non_max_suppression,
+from .utils.utils_bbox import (decode, decode_landm, non_max_suppression,
                               retinaface_correct_boxes)
-from face.config import defaults
+from .config import defaults
+from Observers import Observable, ObserverData
 import os
 # 当前文件的完整路径
 current_file_path = os.path.abspath(__file__)
@@ -28,7 +28,7 @@ current_dir = os.path.dirname(current_file_path)
 #   在更换facenet_model后，
 #   一定要注意重新编码人脸。
 
-class FaceRecognition:
+class FaceRecognition(Observable):
     #   初始化Retinaface
     def __init__(self, encoding=0, **kwargs):
         super().__init__()
@@ -273,17 +273,30 @@ class FaceRecognition:
         
         boxes_conf_landms = self.get_boxes_conf_landms(old_image)
 
+        
+
         if boxes_conf_landms is None:
             return old_image   
+        
+        # 只识别画面中最大的矩形框
+        best_face_location, _ = self.get_maximum_box(boxes_conf_landms)
        
-        _, calibration_imgs = self.get_face_images_pre_post_calibration(old_image, boxes_conf_landms)
+        ori_face, calibration_imgs = self.get_face_images_pre_post_calibration(old_image, [best_face_location])
         
         # 获取人脸编码
         face_encodings = self.get_face_encodings(calibration_imgs)
 
         # 人脸特征比对
         face_names = self.get_face_info(face_encodings)
+
         
+        # face_names  里面最多有一张图片
+        if face_names[0] != 'Unknown':
+            ori_face = cv2.cvtColor(ori_face[0], cv2.COLOR_RGB2BGR)
+            self.notify_observers(ObserverData(None, (face_names, ori_face)))
+        
+
+
         # 绘制
         if self.drawImg:
             self.draw(old_image, face_names, boxes_conf_landms)

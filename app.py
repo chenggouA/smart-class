@@ -1,12 +1,11 @@
 from flask import Flask, render_template, Response
 from Camera.Stream import CameraStream
 from flask_executor import Executor
-from Camera.HKcam import HKCam
+# from Camera.HKcam import HKCam
 from configs.config import *
-from flask_cors import CORS
 from utils.utils import *
-from create import create_action_detection_model, create_FaceRecognition, get_minio_client
-
+from create import create_action_detection_model, create_FaceRecognition, get_minio_client, create_app
+from create.database import *
 import cv2
 
 
@@ -24,19 +23,22 @@ import cv2
 # 使用 HKCam
 
 # 使用本机的Cam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("qiandao.mp4")
 # 使用本机的Cam
 
 
 # === 全局变量 ===
 
-app = Flask(__name__)
+app = create_app()
 executor = Executor(app)
-CORS(app, origins=" http://localhost:5173/")
+
+
 yolo = create_action_detection_model()
-retinaface = create_FaceRecognition()
+
 # minio client
 minioClient = get_minio_client()
+retinaface = create_FaceRecognition(minioClient)
+
 
 camera_stream = CameraStream()
 
@@ -49,10 +51,12 @@ def read_camera(cap):
         print("摄像头开启")
         i = 0
         while True:
+            i += 1
             _, img = cap.read()
 
-            img = yolo.inference(img)
-            # img = retinaface.inference(img)
+            # img = yolo.inference(img)
+            if i % 25 == 0:
+                img = retinaface.inference(img)
             
             _, bytes_arr = cv2.imencode('.jpg', img)
 
@@ -65,6 +69,11 @@ def read_camera(cap):
 
 
 # === 全局变量 ===
+
+
+@app.route("/create_table")
+def create():
+    create_all_tables()
 
 
 @app.route("/")

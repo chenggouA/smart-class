@@ -2,11 +2,13 @@
 # 写入数据库
 import os
 from utils.utils import *
-from database.domain import HautActionRecord, HautCoordinates, get_session
+from create.database import *
 from configs.config import *
+from sqlalchemy import desc
 from deep_sort import build_tracker
 from utils.parser import get_config
 import warnings
+from create.database import db  
 import numpy as np  
 import torch
 class ObserverData:
@@ -30,7 +32,7 @@ class ObserverData:
         
         
 # 观察者模式
-class Observable:
+class Observable(object):
     
     def __init__(self):
         self.observers = []
@@ -100,36 +102,83 @@ class ImageWriter:
         
 
 # 写入数据库
-class DataBaseWriter:
+# class DataBaseWriter:
 
-    db_session = get_session()
-    def update(self, data: ObserverData):
+#     db_session = get_session()
+#     def update(self, data: ObserverData):
 
-        fileName = data.get_previous()
-        if fileName == None:
-            return data.set_previous(None)
+#         fileName = data.get_previous()
+#         if fileName == None:
+#             return data.set_previous(None)
 
-        items = data.get_original()
+#         items = data.get_original()
         
         
 
-        actionRecord = HautActionRecord(image_url=fileName, timestamp=datetime.now())
-        self.db_session.add(actionRecord)
-        self.db_session.commit()
+#         actionRecord = HautActionRecord(image_url=fileName, timestamp=datetime.now())
+#         self.db_session.add(actionRecord)
+#         self.db_session.commit()
 
-        coordinates = []
+#         coordinates = []
 
-        for bbox, cls_ids in items:
+#         for bbox, cls_ids in items:
 
-            coordinates.append(HautCoordinates(behavior_id = cls_ids + 1, action_record_id = actionRecord.id, x1=bbox[0], y1=bbox[1], x2=bbox[2], y2=bbox[3]))
-            # draw_bbox_with_text(origin_img, bbox, text, font_scale, text_color, class_color.get(item[5]), thickness)
+#             coordinates.append(HautCoordinates(behavior_id = cls_ids + 1, action_record_id = actionRecord.id, x1=bbox[0], y1=bbox[1], x2=bbox[2], y2=bbox[3]))
+#             # draw_bbox_with_text(origin_img, bbox, text, font_scale, text_color, class_color.get(item[5]), thickness)
         
-        self.db_session.add_all(coordinates)
-        self.db_session.commit()
+#         self.db_session.add_all(coordinates)
+#         self.db_session.commit()
 
-        return data.set_previous(None)
+#         return data.set_previous(None)
     
 
 
+from utils import upload_cv2_image_to_minio, create_unique_filename
+
 class SignImgWriter():
-    db_session = get_session()
+    
+    last_record = None
+
+    def __init__(self, minioClient):
+        self.minioClient = minioClient
+
+    
+    
+    
+
+    def update(self, data: ObserverData):
+        if self.last_record is None:
+            self.last_record = HautSign.query.order_by(desc(HautSign.createTime)).first()
+            self.student = HautSign.get_not_signed_students(self.last_record)
+        # 获取未签到的学生姓名
+        
+        name, face = data.get_original()
+
+        name = name[0]
+
+        stu = HautStudent.query.filter_by(name=name).first()
+        if stu not in self.student:
+            return
+        # 删除元素
+        self.student.remove(stu)
+        
+        
+        file_name = create_unique_filename()
+        upload_cv2_image_to_minio(face, self.minioClient, "sign", file_name + ".jpg")
+
+        db.session.add(HautSignRecord(
+            signId = self.last_record.signID,
+            studentId = stu.student_id,
+            signTime = datetime.now(),
+            signImg = "sign/" + file_name + ".jpg" 
+        ))
+
+        db.session.commit()
+
+
+        
+        
+        
+
+        print(ObserverData)
+        pass

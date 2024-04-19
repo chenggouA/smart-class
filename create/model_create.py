@@ -1,5 +1,6 @@
 from ai.model import YOLOV8
-from Observers import ImageWriter, DataBaseWriter, DeepSortObserver
+from Observers import SignImgWriter
+# from Observers import ImageWriter, DataBaseWriter, DeepSortObserver, SignImgWriter
 from face import FaceRecognition
 
 def create_action_detection_model(pred_flag = True):
@@ -11,6 +12,8 @@ def create_action_detection_model(pred_flag = True):
 
     return yolo
 
-def create_FaceRecognition():
+def create_FaceRecognition(minioClient):
+    
     retinaface = FaceRecognition()
+    retinaface.register_observer(SignImgWriter(minioClient))
     return retinaface
